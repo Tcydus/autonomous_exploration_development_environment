@@ -28,6 +28,9 @@
 
 using namespace std;
 
+
+float targetYaw = 90 * PI / 180.0 + PI;
+
 const double PI = 3.1415926;
 
 double sensorOffsetX = 0;
@@ -329,12 +332,28 @@ int main(int argc, char** argv)
       if (safetyStop >= 1) vehicleSpeed = 0;
       if (safetyStop >= 2) vehicleYawRate = 0;
 
+
       pubSkipCount--;
       if (pubSkipCount < 0) {
         cmd_vel.header.stamp = ros::Time().fromSec(odomTime);
-        if (fabs(vehicleSpeed) <= maxAccel / 100.0) cmd_vel.twist.linear.x = 0;
-        else cmd_vel.twist.linear.x = vehicleSpeed;
+
         cmd_vel.twist.angular.z = vehicleYawRate;
+        if (fabs(vehicleSpeed) <= maxAccel / 100.0){
+          cmd_vel.twist.linear.x = 0; 
+          float yawErr = targetYaw - (vehicleYaw + PI) ;
+          float yawGain = 0.5f;
+          if (fabs(yawErr) >= 0.0174){
+              cmd_vel.twist.angular.z = yawGain * yawErr;
+              ROS_INFO("%.6f, %.6f",vehicleYaw + PI, targetYaw);
+          }
+          else{
+            cmd_vel.twist.angular.z = 0;
+          }
+        }
+        else{
+          cmd_vel.twist.linear.x = vehicleSpeed;
+        }
+
         pubSpeed.publish(cmd_vel);
 
         pubSkipCount = pubSkipNum;
